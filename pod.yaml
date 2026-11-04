@@ -1,0 +1,22 @@
+# Minimal pod that proves the Key Vault secret can be read inside the cluster.
+# The secret is mounted as a file: /mnt/kv/app-message
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kv-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["sh", "-c", "cat /mnt/kv/app-message && sleep 3600"]
+      volumeMounts:
+        - name: kv
+          mountPath: /mnt/kv
+          readOnly: true
+  volumes:
+    - name: kv
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: kv-lab

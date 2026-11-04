@@ -1,0 +1,27 @@
+# Secrets Store CSI driver -> Azure Key Vault provider.
+#
+# The AKS add-on authenticates with a user-assigned managed identity, so we use
+# useVMManagedIdentity + userAssignedIdentityID (NOT usePodIdentity / clientID,
+# which is for workload identity or pod identity setups).
+#
+# Values come from:
+#   terraform output -raw kv_client_id
+#   terraform output -raw key_vault_name
+#   terraform output -raw tenant_id
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: kv-lab
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "db4f9427-e5f2-494a-9eb6-9deae6e27256"
+    keyvaultName: "kv-azlab-397wj"
+    tenantId: "604f1a96-cbe8-43f8-abbf-f8eaf5d85730"
+    objects: |
+      array:
+        - |
+          objectName: app-message
+          objectType: secret

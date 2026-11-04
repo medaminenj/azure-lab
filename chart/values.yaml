@@ -1,0 +1,19 @@
+replicaCount: 1
+
+image:
+  # Filled at install time with --set image.repository=<acr>.azurecr.io/web
+  repository: ""
+  tag: "v1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi

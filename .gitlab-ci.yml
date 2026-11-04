@@ -1,0 +1,63 @@
+# Terraform CI for azure-lab
+#   validate -> plan -> (manual) apply
+#
+# Auth: a service principal, passed as masked CI/CD variables:
+#   ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
+# State: remote, in Azure Blob Storage (see backend.tf)
+
+image:
+  name: hashicorp/terraform:1.15.8
+  entrypoint: [""]
+
+variables:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+stages:
+  - validate
+  - plan
+  - apply
+
+# Runs in every job. CI runners are fresh containers, so the providers and the
+# backend connection must be re-established on each run.
+before_script:
+  - terraform --version
+  - terraform init -input=false
+
+# --- 1. Static checks: no Azure credentials needed -------------------------
+validate:
+  stage: validate
+  script:
+    - terraform fmt -check -recursive
+    - terraform validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# --- 2. Plan: read-only diff, reviewed before merging ----------------------
+plan:
+  stage: plan
+  script:
+    - terraform plan -input=false -out=plan.tfplan
+    - terraform show -no-color plan.tfplan > plan.txt
+  artifacts:
+    paths:
+      - plan.tfplan
+      - plan.txt
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# --- 3. Apply: default branch only, and only when a human clicks it --------
+apply:
+  stage: apply
+  script:
+    - terraform apply -input=false -auto-approve plan.tfplan
+  dependencies:
+    - plan
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  environment:
+    name: lab
